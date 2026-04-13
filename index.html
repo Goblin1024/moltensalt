@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>普朗克光谱能量与熔盐吸收窗口重叠耦合交互探索器</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/ScrollTrigger.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700;900&family=LXGW+WenKai:wght@400;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-cream: #f6f1eb;
+  --bg-warm: #ede5d8;
+  --text-ink: #2c2417;
+  --text-muted: #6b5d4d;
+  --accent-blue: #2a6fb5;
+  --accent-orange: #d4860b;
+  --accent-green: #3a8a5c;
+  --accent-red: #b53a2a;
+  --border-light: #d4c9b8;
+  --card-bg: rgba(255,252,247,0.85);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'LXGW WenKai', 'Noto Serif SC', serif;
+  background: var(--bg-cream);
+  color: var(--text-ink);
+  line-height: 1.8;
+  overflow-x: hidden;
+}
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='200' height='200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+}
+h1, h2, h3 { font-family: 'Noto Serif SC', serif; }
+.font-mono { font-family: 'JetBrains Mono', monospace; }
+#progress-bar {
+  position: fixed; top: 0; left: 0; height: 3px; z-index: 9999;
+  background: linear-gradient(90deg, var(--accent-blue), var(--accent-orange));
+  width: 0%; transition: width 0.1s;
+}
+.hero {
+  min-height: 60vh; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; text-align: center;
+  padding: 3rem 1rem;
+  background: linear-gradient(180deg, #e8dfd2 0%, var(--bg-cream) 100%);
+  position: relative; overflow: hidden;
+}
+.hero::after {
+  content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 120px;
+  background: linear-gradient(180deg, transparent, var(--bg-cream));
+}
+.hero-title {
+  font-size: clamp(1.8rem, 4.5vw, 3.2rem);
+  font-weight: 900; letter-spacing: 0.04em;
+  background: linear-gradient(135deg, var(--text-ink) 0%, var(--accent-blue) 50%, var(--accent-orange) 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text; line-height: 1.3; margin-bottom: 1rem;
+}
+.hero-sub {
+  font-size: clamp(0.95rem, 1.8vw, 1.15rem);
+  color: var(--text-muted); max-width: 720px; line-height: 2;
+}
+.section-card {
+  background: var(--card-bg);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 24px rgba(44,36,23,0.06);
+}
+.ctrl-label {
+  font-size: 0.85rem; font-weight: 700; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.25rem;
+}
+input[type=range] {
+  -webkit-appearance: none; width: 100%; height: 6px; border-radius: 3px;
+  background: linear-gradient(90deg, #5b8abf, #d4860b, #b53a2a);
+  outline: none; cursor: pointer;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%;
+  background: #fff; border: 3px solid var(--accent-blue);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.18); cursor: grab;
+}
+select, .custom-input {
+  font-family: 'LXGW WenKai', serif;
+  padding: 0.4rem 0.8rem; border-radius: 8px;
+  border: 1px solid var(--border-light); background: #fffcf7;
+  font-size: 0.9rem; color: var(--text-ink); outline: none;
+}
+select:focus, .custom-input:focus { border-color: var(--accent-blue); }
+.badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 0.15rem 0.6rem; border-radius: 20px; font-size: 0.78rem;
+  font-weight: 700; font-family: 'JetBrains Mono', monospace;
+}
+.energy-bar-track {
+  height: 22px; border-radius: 11px; overflow: hidden;
+  background: #e8e0d4; position: relative;
+}
+.energy-bar-fill {
+  height: 100%; border-radius: 11px; transition: width 0.5s ease;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.72rem; font-weight: 700; color: #fff;
+  font-family: 'JetBrains Mono', monospace; white-space: nowrap;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+.band-row {
+  display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;
+  padding: 0.5rem 0; border-bottom: 1px dashed var(--border-light);
+}
+.band-row:last-child { border-bottom: none; }
+.band-input {
+  width: 80px; padding: 0.3rem 0.5rem; border-radius: 6px;
+  border: 1px solid var(--border-light); background: #fffcf7;
+  font-family: 'JetBrains Mono', monospace; font-size: 0.82rem;
+  text-align: center;
+}
+.btn-sm {
+  padding: 0.25rem 0.7rem; border-radius: 6px; border: 1px solid var(--border-light);
+  background: #fffcf7; cursor: pointer; font-size: 0.82rem;
+  font-family: 'LXGW WenKai', serif; transition: all 0.2s;
+}
+.btn-sm:hover { background: var(--accent-blue); color: #fff; border-color: var(--accent-blue); }
+.btn-danger:hover { background: var(--accent-red); border-color: var(--accent-red); }
+.theory-block {
+  padding: 1.5rem 2rem; margin: 1.5rem 0;
+  border-left: 4px solid var(--accent-blue);
+  background: rgba(42,111,181,0.04); border-radius: 0 12px 12px 0;
+}
+.theory-block.orange { border-left-color: var(--accent-orange); background: rgba(212,134,11,0.04); }
+.theory-block.green { border-left-color: var(--accent-green); background: rgba(58,138,92,0.04); }
+.theory-block.red { border-left-color: var(--accent-red); background: rgba(181,58,42,0.04); }
+.theory-title {
+  font-size: 1.15rem; font-weight: 700; margin-bottom: 0.5rem;
+  display: flex; align-items: center; gap: 0.5rem;
+}
+.theory-icon {
+  width: 28px; height: 28px; border-radius: 50%; display: flex;
+  align-items: center; justify-content: center; font-size: 0.9rem; color: #fff; flex-shrink: 0;
+}
+.formula-box {
+  background: rgba(255,252,247,0.9); border: 1px solid var(--border-light);
+  border-radius: 10px; padding: 1rem 1.5rem; margin: 0.75rem 0;
+  text-align: center; font-size: 1.1rem;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.04);
+}
+@media (max-width: 768px) {
+  .section-card { padding: 1rem; }
+  .theory-block { padding: 1rem; }
+}
+</style>
+</head>
+<body>
+<div id="progress-bar"></div>
+
+<section class="hero" id="hero">
+  <div style="position:absolute;inset:0;opacity:0.03;pointer-events:none;">
+    <svg width="100%" height="100%"><defs><pattern id="grid" width="60" height="60" patternUnits="userSpaceOnUse"><path d="M 60 0 L 0 0 0 60" fill="none" stroke="#2c2417" stroke-width="0.5"/></pattern></defs><rect width="100%" height="100%" fill="url(#grid)"/></svg>
+  </div>
+  <h1 class="hero-title" id="hero-title">普朗克光谱能量与熔盐吸收窗口<br>重叠耦合交互探索器</h1>
+  <p class="hero-sub" id="hero-sub">
+    熔盐作为半透明介质，其光谱吸收系数在特定波长处发生阶跃式跳变——形成"透明窗口"与"强吸收带"的共存格局。
+    本探索器将普朗克黑体辐射光谱与熔盐吸收特性叠加呈现，帮助您直观理解温度变化、熔盐种类差异如何改变辐射能量在不同吸收窗口中的分配，
+    揭示这一量子力学特征对工程传热的深远影响。
+  </p>
+</section>
+
+<main class="max-w-6xl mx-auto px-4 pb-16" style="margin-top:-2rem;position:relative;z-index:1;">
+
+  <div class="section-card" id="stats-panel" style="display:flex;flex-wrap:wrap;gap:1rem;align-items:center;justify-content:space-between;">
+    <div>
+      <span class="ctrl-label">系统温度</span>
+      <div class="font-mono" style="font-size:1.6rem;font-weight:700;color:var(--accent-blue);" id="temp-display">985.0 K</div>
+    </div>
+    <div>
+      <span class="ctrl-label">峰值波长 (Wien)</span>
+      <div class="font-mono" style="font-size:1.6rem;font-weight:700;color:var(--accent-orange);" id="wien-display">2.94 μm</div>
+    </div>
+    <div id="energy-stats" style="display:flex;flex-wrap:wrap;gap:0.75rem;"></div>
+  </div>
+
+  <div class="section-card" id="controls-panel">
+    <div style="display:flex;flex-wrap:wrap;gap:1rem;align-items:center;margin-bottom:1rem;">
+      <div style="flex:1;min-width:240px;">
+        <div class="ctrl-label">温度 (K)</div>
+        <div style="display:flex;align-items:center;gap:1rem;">
+          <input type="range" id="temp-slider" min="300" max="2000" value="985" step="1">
+          <input type="number" id="temp-input" class="custom-input font-mono" style="width:80px;text-align:center;" value="985" min="300" max="2000">
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:0.72rem;color:var(--text-muted);margin-top:2px;" class="font-mono">
+          <span>300 K</span><span>800 K</span><span>1200 K</span><span>1600 K</span><span>2000 K</span>
+        </div>
+      </div>
+      <div style="min-width:200px;">
+        <div class="ctrl-label">熔盐种类</div>
+        <select id="salt-select" style="width:100%;">
+          <option value="solar">Solar Salt (NaNO₃-KNO₃)</option>
+          <option value="hitec">Hitec Salt (NaNO₃-KNO₃-NaNO₂)</option>
+          <option value="flinak">FLiNaK (LiF-NaF-KF)</option>
+          <option value="flibe">FLiBe (LiF-BeF₂)</option>
+          <option value="chloride">NaCl-KCl-MgCl₂（多窗口）</option>
+          <option value="custom">自定义</option>
+        </select>
+      </div>
+    </div>
+    <div id="custom-panel" style="display:none;border-top:1px solid var(--border-light);padding-top:1rem;margin-top:0.5rem;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
+        <span style="font-weight:700;font-size:0.9rem;">自定义吸收波段（最多 5 个）</span>
+        <button class="btn-sm" id="add-band-btn">+ 添加波段</button>
+      </div>
+      <div style="display:flex;gap:0.5rem;font-size:0.72rem;color:var(--text-muted);margin-bottom:0.5rem;padding-left:0.5rem;" class="font-mono">
+        <span style="width:80px;text-align:center;">起始 λ (μm)</span>
+        <span style="width:80px;text-align:center;">终止 λ (μm)</span>
+        <span style="width:80px;text-align:center;">κ (m⁻¹)</span>
+        <span style="width:80px;text-align:center;">类型</span>
+      </div>
+      <div id="bands-container"></div>
+    </div>
+  </div>
+
+  <div class="section-card" id="energy-breakdown-panel">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+      <span style="font-weight:700;font-size:1rem;">各吸收窗口辐射能量占比分布</span>
+      <span class="font-mono" style="font-size:0.8rem;color:var(--text-muted);" id="total-power-display"></span>
+    </div>
+    <div id="energy-bars-container"></div>
+  </div>
+
+  <div class="section-card" id="chart-panel" style="padding:1rem;">
+    <div id="main-chart" style="width:100%;height:520px;"></div>
+  </div>
+
+  <div class="section-card" id="pie-panel">
+    <div style="font-weight:700;font-size:1rem;margin-bottom:0.5rem;">能量分配饼图</div>
+    <div id="pie-chart" style="width:100%;height:320px;"></div>
+  </div>
+
+  <section id="theory" style="margin-top:3rem;">
+    <h2 style="font-size:1.8rem;font-weight:900;text-align:center;margin-bottom:0.5rem;">理论背景与探索器说明</h2>
+    <p style="text-align:center;color:var(--text-muted);margin-bottom:2rem;max-width:600px;margin-left:auto;margin-right:auto;">
+      理解光子能量与熔盐分子内部能级的匹配关系，是揭示这一光谱跳变现象的关键。
+    </p>
+
+    <div class="theory-block anim-block" id="theory-1">
+      <div class="theory-title">
+        <span class="theory-icon" style="background:var(--accent-blue);">I</span>
+        探索器的存在意义
+      </div>
+      <p>熔盐具有"<strong>短波极度透明、长波强烈吸收</strong>"的光谱特性，这绝非实验误差，而是半透明介质最本质的量子力学特征。这一特性在工程中带来四个决定性影响：</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem;margin-top:1rem;">
+        <div style="background:rgba(255,255,255,0.6);border-radius:10px;padding:1rem;border:1px solid var(--border-light);">
+          <strong style="color:var(--accent-blue);">热物性测量的辐射穿透效应</strong>
+          <p style="font-size:0.88rem;margin-top:0.3rem;">在激光闪光法（LFA）中，高温石墨发射的短波辐射可<strong>直接穿透熔盐层</strong>（透明窗口），瞬间到达探测端，导致反演得到的导热系数被严重高估——误差可达 50% 甚至数倍。不掌握光谱特性，就无法剥离"本征导热系数"。</p>
+        </div>
+        <div style="background:rgba(255,255,255,0.6);border-radius:10px;padding:1rem;border:1px solid var(--border-light);">
+          <strong style="color:var(--accent-orange);">太阳能光热的"液态温室效应"</strong>
+          <p style="font-size:0.88rem;margin-top:0.3rem;">太阳辐射主要在 0.3~2.5 μm 波段——恰好落入熔盐的透明窗口，阳光可深入流体内部被容积吸收；而熔盐自身高温热辐射（>4 μm）在强吸收带被自身表层重新吸收，大幅降低热损。</p>
+        </div>
+        <div style="background:rgba(255,255,255,0.6);border-radius:10px;padding:1rem;border:1px solid var(--border-light);">
+          <strong style="color:var(--accent-green);">表观导热系数的非线性激增</strong>
+          <p style="font-size:0.88rem;margin-top:0.3rem;">随温度升高，辐射峰值向短波移动（维恩位移），越来越多辐射能通过透明窗口长距离穿梭。超过临界温度后，传热能力呈<strong>非线性剧烈增长</strong>。</p>
+        </div>
+        <div style="background:rgba(255,255,255,0.6);border-radius:10px;padding:1rem;border:1px solid var(--border-light);">
+          <strong style="color:var(--accent-red);">CFD 仿真的"维度灾难"</strong>
+          <p style="font-size:0.88rem;margin-top:0.3rem;">引入真实光谱跳变特性后，辐射传输方程（RTE）需在每个波段独立求解再耦合，计算量随波段数指数级上升。学术界迫切需要"适用性边界图"来判断何时可安全使用灰体近似。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="theory-block orange anim-block" id="theory-2">
+      <div class="theory-title">
+        <span class="theory-icon" style="background:var(--accent-orange);">II</span>
+        吸收系数跳变的物理机制
+      </div>
+      <p>根据普朗克-爱因斯坦关系式，光子能量与波长成反比：</p>
+      <div class="formula-box">$$E = \dfrac{hc}{\lambda}$$</div>
+      <p>熔盐对辐射的吸收本质上是介质内部微观粒子吸收光子能量并发生<strong>能级跃迁</strong>的过程。在不同波段，主导吸收的微观机制截然不同：</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1rem;">
+        <div style="background:rgba(58,138,92,0.08);border-radius:10px;padding:1rem;border:1px solid rgba(58,138,92,0.2);">
+          <strong style="color:var(--accent-green);">透明窗口（短波：可见光~近红外）</strong>
+          <p style="font-size:0.88rem;margin-top:0.3rem;"><strong>电子无法跃迁：</strong>熔盐是离子液体，具有宽电子能带间隙（Band Gap），可见光/近红外光子（约 1.2~2.5 eV）能量不足以激发价带电子。</p>
+          <p style="font-size:0.88rem;"><strong>分子无法共振：</strong>光子能量又远超分子化学键振动所需能量。缺乏匹配能级，光子"如入无人之境"直接穿透。</p>
+          <p style="font-size:0.88rem;color:var(--text-muted);margin-top:0.3rem;">微弱吸收由微量杂质离子（Fe³⁺, Ni²⁺）或泛频振动引起。</p>
+        </div>
+        <div style="background:rgba(181,58,42,0.08);border-radius:10px;padding:1rem;border:1px solid rgba(181,58,42,0.2);">
+          <strong style="color:var(--accent-red);">强吸收带（长波：中远红外）</strong>
+          <p style="font-size:0.88rem;margin-top:0.3rem;"><strong>分子振动共振：</strong>光子能量（< 0.3 eV）恰好与阴离子（如 NO₃⁻）内部化学键的本征振动能级（N-O 伸缩振动、弯曲振动）完美匹配。</p>
+          <p style="font-size:0.88rem;">发生强烈共振吸收，熔盐分子"像海绵吸水一样"将辐射能直接转化为分子振动动能（热能）。介质瞬间从"透明的玻璃"变成"光学厚度的黑墙"。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="theory-block green anim-block" id="theory-3">
+      <div class="theory-title">
+        <span class="theory-icon" style="background:var(--accent-green);">III</span>
+        温度-波长耦合效应
+      </div>
+      <p>维恩位移定律揭示了温度如何改变辐射能量的光谱分布：</p>
+      <div class="formula-box">$$\lambda_{\max} = \dfrac{2898}{T} \; \mu\text{m}$$</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;margin-top:1rem;">
+        <div style="background:rgba(255,255,255,0.6);border-radius:10px;padding:1rem;text-align:center;border:1px solid var(--border-light);">
+          <div class="font-mono" style="font-size:1.8rem;font-weight:700;color:var(--accent-blue);">600 K</div>
+          <div class="font-mono" style="font-size:0.9rem;">λ<sub>max</sub> = 4.83 μm</div>
+          <div style="font-size:0.82rem;color:var(--text-muted);">峰值落入强吸收带<br>大部分辐射被自身吸收</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.6);border-radius:10px;padding:1rem;text-align:center;border:1px solid var(--border-light);">
+          <div class="font-mono" style="font-size:1.8rem;font-weight:700;color:var(--accent-orange);">1000 K</div>
+          <div class="font-mono" style="font-size:0.9rem;">λ<sub>max</sub> = 2.90 μm</div>
+          <div style="font-size:0.82rem;color:var(--text-muted);">峰值接近窗口边界<br>辐射穿透开始显著</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.6);border-radius:10px;padding:1rem;text-align:center;border:1px solid var(--border-light);">
+          <div class="font-mono" style="font-size:1.8rem;font-weight:700;color:var(--accent-red);">1800 K</div>
+          <div class="font-mono" style="font-size:0.9rem;">λ<sub>max</sub> = 1.61 μm</div>
+          <div style="font-size:0.82rem;color:var(--text-muted);">峰值深入透明窗口<br>辐射穿透效应主导传热</div>
+        </div>
+      </div>
+      <p style="margin-top:1rem;">这正是本探索器的核心展示目标：随着温度升高，黑体辐射的能量峰值向短波偏移——逐渐进入熔盐的透明窗口。两种波段（透明 vs 不透明）分配到的热量权重发生剧烈变化，这种"博弈"直接决定工程设计的策略选择。</p>
+    </div>
+
+    <div class="theory-block red anim-block" id="theory-4">
+      <div class="theory-title">
+        <span class="theory-icon" style="background:var(--accent-red);">IV</span>
+        本探索器实现的功能
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1rem;margin-top:0.5rem;">
+        <div style="display:flex;gap:0.75rem;align-items:flex-start;">
+          <span style="font-size:1.5rem;line-height:1;color:var(--accent-blue);">&#9679;</span>
+          <div><strong>光谱重叠可视化</strong><br><span style="font-size:0.88rem;">将普朗克辐射光谱与熔盐吸收系数阶梯函数叠加在同一坐标系中，直观呈现两者的耦合关系。</span></div>
+        </div>
+        <div style="display:flex;gap:0.75rem;align-items:flex-start;">
+          <span style="font-size:1.5rem;line-height:1;color:var(--accent-orange);">&#9679;</span>
+          <div><strong>温度联动响应</strong><br><span style="font-size:0.88rem;">实时拖动温度滑块，观察辐射曲线形态变化及维恩位移如何改变能量在各窗口中的分配。</span></div>
+        </div>
+        <div style="display:flex;gap:0.75rem;align-items:flex-start;">
+          <span style="font-size:1.5rem;line-height:1;color:var(--accent-green);">&#9679;</span>
+          <div><strong>多种熔盐对比</strong><br><span style="font-size:0.88rem;">预置 5 种典型熔盐（含多窗口氯化盐），一键切换比较不同盐种的吸收窗口位置与宽度差异。</span></div>
+        </div>
+        <div style="display:flex;gap:0.75rem;align-items:flex-start;">
+          <span style="font-size:1.5rem;line-height:1;color:var(--accent-red);">&#9679;</span>
+          <div><strong>自定义研究分析</strong><br><span style="font-size:0.88rem;">支持自定义最多 5 个吸收波段，可模拟任意盐种的光谱特性，用于科研参数探索与教学演示。</span></div>
+        </div>
+        <div style="display:flex;gap:0.75rem;align-items:flex-start;">
+          <span style="font-size:1.5rem;line-height:1;color:var(--text-muted);">&#9679;</span>
+          <div><strong>定量能量占比</strong><br><span style="font-size:0.88rem;">实时积分计算各吸收窗口内的辐射能量占比，以条形图和饼图双重展示，量化温度-光谱耦合效应。</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer style="text-align:center;padding:3rem 1rem;color:var(--text-muted);font-size:0.82rem;">
+    <p>普朗克光谱能量与熔盐吸收窗口重叠耦合交互探索器</p>
+    <p style="margin-top:0.3rem;">基于普朗克黑体辐射定律 · 维恩位移定律 · 半透明介质光谱吸收理论</p>
+  </footer>
+</main>
+
+<script>
+const C1 = 3.7418e8, C2 = 14388;
+function planck(l, T) {
+  if (T <= 0 || l <= 0) return 0;
+  const x = C2 / (l * T);
+  return x > 500 ? 0 : C1 / (Math.pow(l, 5) * (Math.exp(x) - 1));
+}
+function wienPeak(T) { return 2898 / T; }
+
+const SALT_PRESETS = {
+  solar: { name: 'Solar Salt (NaNO₃-KNO₃ 60:40)', bands: [
+    { start: 0.3, end: 3.5, kappa: 8, label: '透明窗口', type: 'transparent' },
+    { start: 3.5, end: 4.5, kappa: 300, label: '过渡带', type: 'transition' },
+    { start: 4.5, end: 15, kappa: 2000, label: '强吸收带', type: 'opaque' }
+  ]},
+  hitec: { name: 'Hitec Salt (NaNO₃-KNO₃-NaNO₂)', bands: [
+    { start: 0.3, end: 3.0, kappa: 12, label: '透明窗口', type: 'transparent' },
+    { start: 3.0, end: 4.0, kappa: 500, label: '过渡带', type: 'transition' },
+    { start: 4.0, end: 15, kappa: 2200, label: '强吸收带', type: 'opaque' }
+  ]},
+  flinak: { name: 'FLiNaK (LiF-NaF-KF)', bands: [
+    { start: 0.3, end: 5.0, kappa: 3, label: '透明窗口', type: 'transparent' },
+    { start: 5.0, end: 6.0, kappa: 120, label: '过渡带', type: 'transition' },
+    { start: 6.0, end: 15, kappa: 1650, label: '强吸收带', type: 'opaque' }
+  ]},
+  flibe: { name: 'FLiBe (LiF-BeF₂)', bands: [
+    { start: 0.3, end: 6.0, kappa: 2, label: '透明窗口', type: 'transparent' },
+    { start: 6.0, end: 7.0, kappa: 90, label: '过渡带', type: 'transition' },
+    { start: 7.0, end: 15, kappa: 1350, label: '强吸收带', type: 'opaque' }
+  ]},
+  chloride: { name: 'NaCl-KCl-MgCl₂（多窗口）', bands: [
+    { start: 0.3, end: 4.0, kappa: 5, label: '透明窗口 I', type: 'transparent' },
+    { start: 4.0, end: 5.0, kappa: 250, label: '中等吸收带', type: 'transition' },
+    { start: 5.0, end: 8.0, kappa: 20, label: '透明窗口 II', type: 'transparent' },
+    { start: 8.0, end: 15, kappa: 1800, label: '强吸收带', type: 'opaque' }
+  ]}
+};
+
+let customBands = [
+  { start: 0.3, end: 3.5, kappa: 10, label: '波段 1', type: 'transparent' },
+  { start: 3.5, end: 5.0, kappa: 300, label: '波段 2', type: 'transition' },
+  { start: 5.0, end: 15, kappa: 1800, label: '波段 3', type: 'opaque' }
+];
+let currentTemp = 985, currentSalt = 'solar';
+
+function getBands() { return currentSalt === 'custom' ? customBands : SALT_PRESETS[currentSalt].bands; }
+function getKappaAt(l, bands) {
+  for (const b of bands) if (l >= b.start && l < b.end) return b.kappa;
+  return bands[bands.length - 1].kappa;
+}
+function integratePlanck(T, a, b, n) {
+  n = n || 200;
+  const dl = (b - a) / n; let s = 0;
+  for (let i = 0; i <= n; i++) { const w = (i === 0 || i === n) ? 0.5 : 1; s += w * planck(a + i * dl, T); }
+  return s * dl;
+}
+
+const TC = {
+  transparent: { bg: 'rgba(58,138,92,0.15)', border: '#3a8a5c', text: '#3a8a5c', bar: 'linear-gradient(90deg,#3a8a5c,#5cb87a)' },
+  transition: { bg: 'rgba(180,154,11,0.15)', border: '#b59a0b', text: '#8a7400', bar: 'linear-gradient(90deg,#b59a0b,#d4c040)' },
+  opaque: { bg: 'rgba(212,134,11,0.18)', border: '#d4860b', text: '#b56a00', bar: 'linear-gradient(90deg,#d4860b,#e8a840)' }
+};
+
+const mainChart = echarts.init(document.getElementById('main-chart'), null, { renderer: 'svg' });
+const pieChart = echarts.init(document.getElementById('pie-chart'), null, { renderer: 'svg' });
+
+function updateCharts() {
+  const bands = getBands();
+  const lambdas = [], pData = [], kData = [];
+  for (let l = 0.2; l <= 15; l += 0.05) {
+    lambdas.push(+l.toFixed(3));
+    pData.push(+(planck(l, currentTemp)).toFixed(2));
+    kData.push(getKappaAt(l, bands));
+  }
+  const wp = wienPeak(currentTemp);
+  let total = integratePlanck(currentTemp, 0.2, 15, 500);
+  if (total === 0) total = 1e-30;
+  const fracs = bands.map(b => {
+    const e = integratePlanck(currentTemp, b.start, Math.min(b.end, 15), 300);
+    return { ...b, energy: e, fraction: e / total };
+  });
+
+  document.getElementById('temp-display').textContent = currentTemp.toFixed(1) + ' K';
+  document.getElementById('wien-display').textContent = wp.toFixed(2) + ' μm';
+  const tp = 5.67e-8 * Math.pow(currentTemp, 4);
+  document.getElementById('total-power-display').textContent = '总辐射功率: ' + (tp < 1e6 ? tp.toFixed(0) : (tp / 1e6).toFixed(2) + 'M') + ' W/m²';
+
+  document.getElementById('energy-stats').innerHTML = fracs.map(f => {
+    const c = TC[f.type] || TC.transparent;
+    return '<span class="badge" style="background:' + c.bg + ';color:' + c.text + ';border:1px solid ' + c.border + ';">' + f.label + ' ' + (f.fraction * 100).toFixed(1) + '%</span>';
+  }).join('');
+
+  document.getElementById('energy-bars-container').innerHTML = fracs.map(f => {
+    const c = TC[f.type] || TC.transparent;
+    const pct = (f.fraction * 100).toFixed(1);
+    return '<div style="margin-bottom:0.6rem;"><div style="display:flex;justify-content:space-between;font-size:0.82rem;margin-bottom:3px;"><span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + c.text + ';margin-right:4px;"></span>' + f.label + ' <span class="font-mono" style="color:var(--text-muted);">(' + f.start + '–' + (f.end > 14.9 ? '∞' : f.end) + ' μm, κ=' + f.kappa + ' m⁻¹)</span></span><span class="font-mono" style="font-weight:700;color:' + c.text + ';">' + pct + '%</span></div><div class="energy-bar-track"><div class="energy-bar-fill" style="width:' + pct + '%;background:' + c.bar + ';">' + (parseFloat(pct) > 8 ? pct + '%' : '') + '</div></div></div>';
+  }).join('');
+
+  const markLines = [];
+  const seen = new Set();
+  bands.forEach(b => {
+    [b.start, b.end].forEach(v => {
+      if (!seen.has(v) && v > 0.3 && v < 15) {
+        markLines.push({ xAxis: v.toString(), label: { show: false }, lineStyle: { color: '#888', type: 'dashed', width: 1 } });
+        seen.add(v);
+      }
+    });
+  });
+  const wpSnap = lambdas.reduce((a, b) => Math.abs(b - wp) < Math.abs(a - wp) ? b : a, lambdas[0]);
+  markLines.push({ xAxis: wpSnap.toString(), label: { show: true, formatter: 'λ_max', fontFamily: "'JetBrains Mono', monospace", fontSize: 10, position: 'start', color: '#2a6fb5' }, lineStyle: { color: '#2a6fb5', type: 'dotted', width: 2 } });
+
+  const markAreas = bands.map(b => [
+    { xAxis: b.start.toString(), itemStyle: { color: (TC[b.type] || TC.transparent).bg } },
+    { xAxis: Math.min(b.end, 15).toString() }
+  ]);
+
+  mainChart.setOption({
+    backgroundColor: 'transparent',
+    grid: { left: 80, right: 80, top: 40, bottom: 60 },
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: 'rgba(255,252,247,0.95)', borderColor: '#d4c9b8',
+      textStyle: { fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: '#2c2417' },
+      formatter: function(ps) {
+        let s = '<strong>λ = ' + ps[0].axisValue + ' μm</strong><br>';
+        ps.forEach(p => {
+          s += p.marker + ' ' + p.seriesName + ': <strong>' + (typeof p.value === 'number' ? p.value.toFixed(1) : p.value) + '</strong> ' + (p.seriesIndex === 0 ? 'W/m²/μm' : 'm⁻¹') + '<br>';
+        });
+        return s;
+      }
+    },
+    xAxis: {
+      type: 'category', data: lambdas.map(String), name: '波长 λ (μm)',
+      nameTextStyle: { fontFamily: "'JetBrains Mono', monospace", fontSize: 12, padding: [10, 0, 0, 0] },
+      axisLabel: {
+        fontFamily: "'JetBrains Mono', monospace", fontSize: 11,
+        interval: function(idx) { const v = parseFloat(lambdas[idx]); return v % 1 === 0 && v >= 1 && v <= 15; },
+        formatter: function(v) { return parseFloat(v) % 1 === 0 ? v : ''; }
+      },
+      axisLine: { lineStyle: { color: '#a09080' } }, splitLine: { show: false }
+    },
+    yAxis: [
+      {
+        type: 'value', name: '光谱辐射力 (W/m²/μm)',
+        nameTextStyle: { fontFamily: "'LXGW WenKai', serif", fontSize: 12 },
+        axisLabel: { fontFamily: "'JetBrains Mono', monospace", fontSize: 11, formatter: function(v) { return v >= 1000 ? (v / 1000).toFixed(0) + 'k' : v; } },
+        axisLine: { lineStyle: { color: '#2a6fb5' } },
+        splitLine: { lineStyle: { color: 'rgba(160,144,128,0.15)' } }, min: 0
+      },
+      {
+        type: 'log', name: '吸收系数 κ (m⁻¹)', min: 1, max: 10000,
+        nameTextStyle: { fontFamily: "'LXGW WenKai', serif", fontSize: 12 },
+        axisLabel: { fontFamily: "'JetBrains Mono', monospace", fontSize: 11, formatter: function(v) { return v >= 1000 ? (v / 1000) + 'k' : v; } },
+        axisLine: { lineStyle: { color: '#b53a2a' } }, splitLine: { show: false }
+      }
+    ],
+    series: [
+      {
+        name: '光谱辐射力', type: 'line', data: pData, yAxisIndex: 0,
+        smooth: true, symbol: 'none', lineStyle: { color: '#2a6fb5', width: 2.5 },
+        areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+          { offset: 0, color: 'rgba(42,111,181,0.35)' }, { offset: 1, color: 'rgba(42,111,181,0.02)' }
+        ])},
+        markLine: { symbol: 'none', silent: true, data: markLines },
+        markArea: { silent: true, data: markAreas }
+      },
+      {
+        name: '吸收系数 κ', type: 'line', data: kData, yAxisIndex: 1,
+        step: 'middle', symbol: 'none', lineStyle: { color: '#b53a2a', width: 2, type: 'dashed' }
+      }
+    ]
+  }, true);
+
+  pieChart.setOption({
+    backgroundColor: 'transparent',
+    tooltip: {
+      formatter: function(p) { return '<strong>' + p.name + '</strong><br>能量占比: ' + p.value + '%'; },
+      backgroundColor: 'rgba(255,252,247,0.95)', borderColor: '#d4c9b8',
+      textStyle: { fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: '#2c2417' }
+    },
+    series: [{
+      type: 'pie', radius: ['38%', '68%'], center: ['50%', '52%'],
+      label: { formatter: '{b}\n{d}%', fontFamily: "'LXGW WenKai', serif", fontSize: 12, lineHeight: 16, color: '#2c2417' },
+      labelLine: { lineStyle: { color: '#a09080' } },
+      emphasis: { scaleSize: 8 },
+      itemStyle: { borderColor: '#f6f1eb', borderWidth: 2, borderRadius: 6 },
+      data: fracs.map(f => ({
+        name: f.label + '\n(' + f.start + '–' + (f.end > 14.9 ? '∞' : f.end) + ' μm)',
+        value: +(f.fraction * 100).toFixed(1),
+        itemStyle: { color: (TC[f.type] || TC.transparent).text }
+      }))
+    }]
+  }, true);
+}
+
+function renderCustomBands() {
+  const c = document.getElementById('bands-container');
+  c.innerHTML = customBands.map((b, i) =>
+    '<div class="band-row">' +
+    '<input type="number" class="band-input" value="' + b.start + '" step="0.1" min="0.1" max="15" data-idx="' + i + '" data-field="start">' +
+    '<input type="number" class="band-input" value="' + b.end + '" step="0.1" min="0.1" max="15" data-idx="' + i + '" data-field="end">' +
+    '<input type="number" class="band-input" value="' + b.kappa + '" step="1" min="0" max="10000" data-idx="' + i + '" data-field="kappa">' +
+    '<select class="custom-input" style="width:90px;font-size:0.78rem;padding:0.25rem 0.4rem;" data-idx="' + i + '" data-field="type">' +
+    '<option value="transparent"' + (b.type === 'transparent' ? ' selected' : '') + '>弱吸收</option>' +
+    '<option value="transition"' + (b.type === 'transition' ? ' selected' : '') + '>过渡带</option>' +
+    '<option value="opaque"' + (b.type === 'opaque' ? ' selected' : '') + '>强吸收</option></select>' +
+    (customBands.length > 1 ? '<button class="btn-sm btn-danger" data-delidx="' + i + '">删除</button>' : '') +
+    '</div>'
+  ).join('');
+  c.querySelectorAll('input[data-field],select[data-field]').forEach(el => {
+    el.addEventListener('change', function() {
+      const idx = +this.dataset.idx, field = this.dataset.field;
+      if (field === 'type') {
+        customBands[idx].type = this.value;
+        const labels = { transparent: '弱吸收', transition: '过渡带', opaque: '强吸收' };
+        customBands[idx].label = labels[this.value] || '波段';
+      } else {
+        customBands[idx][field] = +this.value;
+      }
+      updateCharts();
+    });
+  });
+  c.querySelectorAll('[data-delidx]').forEach(el => {
+    el.addEventListener('click', function() {
+      customBands.splice(+this.dataset.delidx, 1);
+      renderCustomBands(); updateCharts();
+    });
+  });
+}
+
+document.getElementById('add-band-btn').addEventListener('click', () => {
+  if (customBands.length >= 5) return;
+  const last = customBands[customBands.length - 1];
+  customBands.push({ start: last.end, end: Math.min(last.end + 2, 15), kappa: 500, label: '过渡带', type: 'transition' });
+  renderCustomBands(); updateCharts();
+});
+
+const slider = document.getElementById('temp-slider');
+const tempInput = document.getElementById('temp-input');
+slider.addEventListener('input', () => { currentTemp = +slider.value; tempInput.value = currentTemp; updateCharts(); });
+tempInput.addEventListener('change', () => { let v = Math.max(300, Math.min(2000, +tempInput.value)); currentTemp = v; tempInput.value = v; slider.value = v; updateCharts(); });
+document.getElementById('salt-select').addEventListener('change', function() {
+  currentSalt = this.value;
+  document.getElementById('custom-panel').style.display = currentSalt === 'custom' ? 'block' : 'none';
+  if (currentSalt === 'custom') renderCustomBands();
+  updateCharts();
+});
+window.addEventListener('resize', () => { mainChart.resize(); pieChart.resize(); });
+
+gsap.registerPlugin(ScrollTrigger);
+gsap.from('#hero-title', { opacity: 0, y: 40, duration: 1, ease: 'power3.out' });
+gsap.from('#hero-sub', { opacity: 0, y: 30, duration: 1, delay: 0.3, ease: 'power3.out' });
+gsap.from('#stats-panel', { opacity: 0, y: 20, duration: 0.8, delay: 0.5, ease: 'power2.out' });
+gsap.from('#controls-panel', { opacity: 0, y: 20, duration: 0.8, delay: 0.6, ease: 'power2.out' });
+document.querySelectorAll('.anim-block').forEach(el => {
+  gsap.from(el, { scrollTrigger: { trigger: el, start: 'top 85%', toggleActions: 'play none none none' }, opacity: 0, y: 40, duration: 0.8, ease: 'power2.out' });
+});
+window.addEventListener('scroll', () => {
+  const h = document.documentElement.scrollHeight - window.innerHeight;
+  document.getElementById('progress-bar').style.width = (h > 0 ? (window.scrollY / h) * 100 : 0) + '%';
+});
+
+updateCharts();
+renderMathInElement(document.body, { delimiters: [{ left: '$$', right: '$$', display: true }, { left: '$', right: '$', display: false }] });
+</script>
+</body>
+</html>
